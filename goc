@@ -1,0 +1,4 @@
+gcc fix2.c -o fix2
+gcc fix3.c -o fix3
+gcc fix4.c -o fix4
+

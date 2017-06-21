@@ -1,0 +1,286 @@
+
+June 2017, R. Magnuson   rjm@gandsnut.net
+
+--- PLEASE READ THE ENTIRE DOCUMENT. ---
+
+NOTE:  This information and software programs and code is "AS-IS".
+Use at your own risk.  Your mileage may vary.  You're free to modify
+as you wish.  No support is offered or implied.  Any damage or unexpected
+results are not the author's responsibility.   You've been advised.
+
+
+======= Synopsis =======
+
+Attempt to recover/recreate email messages from Mozilla Thunderbird
+email client's data files, for as many email accounts as you had
+configured, and had used.
+
+======= Audience =======
+
+If you use Mozilla Thunderbird email client, and you are having
+difficulty accessing your emails from within the program, this may
+be of interest.
+
+If you find - when starting Thunderbird - it acts as if it's the
+first time your using it, and prompts you to to create an email
+account...  but you have strong suspicions your message-store is
+still intact (to some degree), this may be of interest.
+
+
+======= Environment ========
+
+My Thunderbird (TB) environment is Linux-only, specifically Ubuntu
+MATE 16.04.   This information and code may or may-not apply to
+other environments.
+
+
+======= Requirements ========
+
+This program is written in 'C'.  Your skill in 'C' should be past
+beginner.  Any changes you desire will require editing the .c
+source-code, and re-compiling.  There are no special libraries
+or dependencies.  You will need access to the TB message-store
+where the email data files are kept.  As such, you will need to
+know how to find your message-store, and know how to navigate into
+and out-of that area.  I used 'C' compiler 'gcc', which may or
+may not be installed on your system.  Using a different compiler
+is probably not a challenge, but you will need to understand
+compiling code -> executable.
+
+
+======== Caveats =========
+
+I believe this program works to extract email messages in complete
+fashion, but the assurance of this fact is left up to the user.
+
+*** NOTE: ***   This program ONLY attempts operation on 'Inbox'
+and 'Sent' data files.  If you want/need to try extraction for
+any other TB data files, you'll have to use this code as a
+starting-point, and make modifications as you see fit. 
+
+*** NOTE: ***   If any 'Inbox' or 'Sent' data-file appears in
+all-caps ('INBOX', 'SENT'), you may want to rename said files
+to 'Inbox' and/or 'Sent'.
+
+*** NOTE: ***   I've noticed at the beginning of data-files
+'Inbox' / 'Sent', there appears the start of a legimate
+email message, but the key string "From -" may appear as "From ^M".
+Edit that very-first line to match "From -"   That may
+generate one more email file.
+
+
+======== Discussion ========
+
+When it became clear that I was in danger of loosing email messages
+due to some filesystem corruption, I searched the Internet for any
+kind of utility to fix this.  None was found that I could use.
+
+I had set up my TB to use a message-store on an external USB hard
+drive.  What I refer to as "message-store" is whatever filesystem
+directory your TB 'profiles.ini' file is set up to point to.
+
+'profiles.ini' - on my Linux system - was found in /home/user/.thunderbird
+and is used by TB to know where the message-store is.  In a TB message-store,
+there are MANY files and MANY sub-directories.
+
+Once you determine where your message-store is, you will need to dig-down
+to find filenames that include:
+
+Inbox
+Sent
+Junk
+Drafts
+Inbox.msf
+Sent.msf
+Junk.msf
+Drafts.msf
+
+...which are likely found in a subdirectory named for the email account:
+
+mail.aol.com
+mail.gmx.com
+just107.justhost.com
+
+...and so on.  These files in my message-store are underneath directory
+'Mail'.  I believe email account subdirectories under 'Mail' are the 'POP'
+kind of accounts, because above directory 'Mail' can be found subdir 'ImapMail'
+for 'IMAP' kinds of accounts.  Digging down into 'ImapMail' will ultimately
+find 
+
+Inbox
+Sent
+Junk
+Drafts
+Inbox.msf
+Sent.msf
+Junk.msf
+Drafts.msf
+
+...files.  AGAIN, this program only concerns itself with 'Inbox' / 'Sent'
+data files.  Other data files are ignored.  Index files are ignored.
+
+
+======== Approach ========
+
+After dumping and analyzing the contents of 'Inbox' and 'Sent', I determined
+that these are not text-files per se, but are not encrypted or specially-
+formatted - at least as I found.  I found in smaller 'Inbox' / 'Sent' files
+that I could edit, that emails seemed to begin with:
+
+From - 
+
+...and would vary in length until another:
+
+From -
+
+...would be seen.  Sometimes there would be:
+
+From:
+
+... strings seen, but my assumption is that TB deliniates email messages with
+a start-point of:
+
+From -
+
+I found that using a 'grep' command, I could write-out all text strings that
+began with:
+
+From -
+
+... that typically had date information after.  I found that 'grep' could include
+the position of this character string, as a number-offset into the whole file.
+Example:
+
+0:From - Fri Jul 18 18:28:41 2014
+10368:From - Wed Sep 24 10:30:51 2014
+14458:From - Mon Oct 26 20:43:36 2015
+17555:From - Mon Oct 26 20:43:47 2015
+20413:From - Mon Oct 26 23:03:10 2015
+21172:From - Mon Oct 26 23:03:17 2015
+
+I determined that this could be interpreted to say:
+
+Starting at file-offset 0, begins the first email message from Jul 18.
+The next email message begins at file-offset 10368, email Sep 24.
+The next email message begins at file-offset 14458, email Oct 26.
+The next email message begins at file-offset 17555, email Oct 26.
+
+...and so on.  I construed that individual email messages were
+the contents BETWEEN the file-offsets.   Knowing this, any number
+of email messages could be extracted knowing their start- and end-points
+in the:
+
+'Inbox' or 'Sent'
+
+...data files.
+
+
+======== Files in this bundle ========
+
+goc        - a shell script to simplify running the 'gcc' compiler
+fix2.c     - the 'C' language source code
+fix3.c     - the 'C' language source code with "Sent Messages" modification
+fix4.c     - the 'C' language source code to process user-chosen data-files
+fix2       - a Linux executable
+fix3       - a Linux executable
+fix4       - a Linux executable
+LICENSE    - statement
+README     - this file
+
+
+======== Approach ========
+
+I'd suggest you mark your 'Inbox' and 'Sent' data files as READ-ONLY,
+just to avoid the chance of overwriting or erasure.  You can't be too
+safe.
+
+If you need to re-compile 'fix2.c', you can use the 'goc' script:
+
+./goc
+
+...and - with no compile errors, you will find the executable:
+
+fix2
+
+...in the working directory.
+
+The 'fix2' executable is not at all user-friendly, and has no 'help'.
+There are no command-line parameters needed.
+
+Copy the 'fix2' executable to somewhere in your PATH to make it
+easy to run from whatever working subdirectory you're in.  This is
+helpful, because you'll probably be changing directories many times
+if you have more than a few email accounts.  Steps (suggested) you
+use by typing at the command-line in a terminal window.  You can
+probably do this all without needing ROOT permissions:
+
+cd /thunderbird_mail
+ls -la
+cd Mail
+ls -la
+cd mail.somemailserver.com
+ls -la
+
+... at which point you should find 'Inbox' and 'Sent' data-files
+(plus others).  Invoke the executable:
+
+fix2
+
+... and some progress messages should be issued.  LET THE PROGRAM
+RUN ITS COURSE.  In one of my 'Inbox' data-files, there were 985
+emails.
+
+The 'fix2' executable is going to work on 'Inbox' and 'Sent' no
+matter what.  Hopefully you'll end up with the current working
+directory populated with files named:
+
+inbox1.eml
+inbox2.eml
+inbox3.eml
+...
+sent1.eml
+sent2.eml
+sent3.eml
+
+... and so-on.
+
+NOTE:   It's possible for 'Inbox' or 'Sent' data-files to be EMPTY.
+As in... 0-bytes.  This program will go ahead and create an empty:
+
+inbox1.eml
+or
+sent1.eml
+
+... file, which, obviously, contains nothing, since the data-file
+contained nothing.
+
+NOTE:  One or more of your resulting 'inbox23.eml' or 'sent9.eml'
+files may be quite large.  This suggests one or more attachments.
+Hopefully the attachments will be intact and not corrupted.
+
+At this point, you should edit a handful of the 'inbox???.eml' and
+'sent???.eml' files to see if they look like individual email
+messages.
+
+
+======== fix3.c =========
+
+As I was processing all my email accounts, I discovered an Imap
+account in TB which designated its 'Sent' data-file as:
+
+Sent Messages
+
+... which fix2 could not understand - because of the embedded
+' ' (space) in the data-file name.  I hacked up fix2.c -> fix3.c
+so the latter could specifically be used for this unique case.
+Same advice as above for fix2.c and fix2 executable applies to
+fix3.c
+
+
+======== fix4.c =========
+
+Also added was another hack of fix3.c that allows the user to
+supply a data-file name of a FOLDER, which appears essentially
+the same as 'Inbox' or 'Sent'.  
+
+
